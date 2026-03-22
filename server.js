@@ -16,6 +16,9 @@ connectDB()
 connectRedis()
 
 app.use('/', require('./src/routes/urlRoutes'))
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'))
+})
 
 // fallback route
 app.use((req, res) => {

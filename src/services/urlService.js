@@ -4,7 +4,12 @@ const { client } = require('../config/redisClient')
 const validator = require('validator')
 
 exports.createShortUrl = async (originalUrl) => {
-    if (!validator.isURL(originalUrl)) {
+
+    // ✅ FIXED VALIDATION
+    if (!validator.isURL(originalUrl, {
+        require_protocol: true,
+        require_valid_protocol: true
+    })) {
         throw new Error("Invalid URL")
     }
 
