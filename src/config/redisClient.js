@@ -1,14 +1,14 @@
-const redis = require('redis')
+const { createClient } = require('redis')
 
-const client = redis.createClient({
-    url: process.env.REDIS_URL
+const client = createClient({
+  url: process.env.REDIS_URL,
+  socket: {
+    reconnectStrategy: false // ❌ don't retry forever
+  }
 })
 
-client.on('error', (err) => console.log('Redis Error:', err))
+client.connect()
+  .then(() => console.log("Redis Connected"))
+  .catch(err => console.log("Redis failed, continuing without it"))
 
-const connectRedis = async () => {
-    await client.connect()
-    console.log("Redis Connected")
-}
-
-module.exports = { client, connectRedis }
+module.exports = { client }

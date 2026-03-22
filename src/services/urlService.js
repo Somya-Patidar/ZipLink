@@ -3,9 +3,9 @@ const URL = require('../models/urlModel')
 const { client } = require('../config/redisClient')
 const validator = require('validator')
 
+// CREATE SHORT URL
 exports.createShortUrl = async (originalUrl) => {
 
-    // ✅ FIXED VALIDATION
     if (!validator.isURL(originalUrl, {
         require_protocol: true,
         require_valid_protocol: true
@@ -17,21 +17,44 @@ exports.createShortUrl = async (originalUrl) => {
 
     const url = await URL.create({ originalUrl, shortId })
 
-    await client.set(shortId, originalUrl, { EX: 3600 })
+    // ✅ TRY REDIS (NON-BLOCKING)
+    try {
+        if (client && client.isOpen) {
+            await client.set(shortId, originalUrl, { EX: 3600 })
+        }
+    } catch (err) {
+        console.log("Redis set failed (ignored):", err.message)
+    }
 
     return url
 }
 
+// GET ORIGINAL URL
 exports.getOriginalUrl = async (shortId) => {
-    const cached = await client.get(shortId)
 
-    if (cached) return { originalUrl: cached }
+    // ✅ TRY CACHE FIRST
+    try {
+        if (client && client.isOpen) {
+            const cached = await client.get(shortId)
+            if (cached) return { originalUrl: cached }
+        }
+    } catch (err) {
+        console.log("Redis get failed (ignored):", err.message)
+    }
 
+    // ✅ FALLBACK TO DB
     const url = await URL.findOne({ shortId })
 
     if (!url) return null
 
-    await client.set(shortId, url.originalUrl, { EX: 3600 })
+    // ✅ TRY TO CACHE AGAIN (NON-BLOCKING)
+    try {
+        if (client && client.isOpen) {
+            await client.set(shortId, url.originalUrl, { EX: 3600 })
+        }
+    } catch (err) {
+        console.log("Redis cache set failed:", err.message)
+    }
 
     return url
 }
