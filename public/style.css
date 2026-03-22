@@ -1,0 +1,32 @@
+body {
+  font-family: Arial;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.container {
+  background: white;
+  padding: 30px;
+  border-radius: 10px;
+  text-align: center;
+}
+
+input {
+  width: 250px;
+  padding: 10px;
+}
+
+button {
+  padding: 10px;
+  background: #667eea;
+  color: white;
+  border: none;
+  margin-top: 10px;
+}
+
+#result {
+  margin-top: 10px;
+}
