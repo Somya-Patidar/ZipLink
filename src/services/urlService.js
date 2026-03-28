@@ -18,43 +18,49 @@ exports.createShortUrl = async (originalUrl, customAlias, expiresAt) => {
         throw new Error("Invalid URL")
     }
 
+    const now = new Date()
+
     // ================================
     // 🔥 CASE 1: CUSTOM ALIAS PROVIDED
     // ================================
     if (customAlias) {
 
-        // check if alias already exists
         try {
             const url = await URL.create({
                 originalUrl,
                 shortId: customAlias,
-                expiresAt
+                expiresAt: expiresAt || null
             })
 
             return url
 
         } catch (err) {
+
+            // 🔥 HANDLE DUPLICATE ALIAS
             if (err.code === 11000) {
+
+                // check existing alias
+                const existing = await URL.findOne({ shortId: customAlias })
+
+                // 🔥 if expired → delete and reuse
+                if (existing && existing.expiresAt && existing.expiresAt < now) {
+
+                    await URL.deleteOne({ shortId: customAlias })
+
+                    const url = await URL.create({
+                        originalUrl,
+                        shortId: customAlias,
+                        expiresAt: expiresAt || null
+                    })
+
+                    return url
+                }
+
                 throw new Error("Alias already taken")
             }
+
             throw err
         }
-
-        // create new mapping (NO deduplication)
-        const url = await URL.create({
-            originalUrl,
-            shortId: customAlias,
-            expiresAt
-        })
-
-        // cache
-        try {
-            if (client?.isOpen) {
-                await client.set(customAlias, JSON.stringify(url), { EX: 3600 })
-            }
-        } catch (err) { }
-
-        return url
     }
 
     // ================================
@@ -62,7 +68,11 @@ exports.createShortUrl = async (originalUrl, customAlias, expiresAt) => {
     // ================================
 
     // check if long URL already exists
-    const existing = await URL.findOne({ originalUrl })
+    const existing = await URL
+        .findOne({ originalUrl })
+        .lean()
+        .maxTimeMS(2000)
+
     if (existing) return existing
 
     // create new short ID
@@ -71,7 +81,7 @@ exports.createShortUrl = async (originalUrl, customAlias, expiresAt) => {
     const url = await URL.create({
         originalUrl,
         shortId,
-        expiresAt
+        expiresAt: expiresAt || null
     })
 
     // cache
