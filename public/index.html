@@ -7,13 +7,20 @@
 <body>
 
 <div class="container">
-  <h1>🔗 URL Shortener</h1>
+  <h1>🔗 ZipLink</h1>
 
   <div class="input-group">
     <input type="text" id="urlInput" placeholder="Enter your long URL..." />
-    <button id="shortenBtn">Shorten</button>
   </div>
 
+  <!-- 🔥 NEW: Custom Alias -->
+  <div class="input-group">
+    <input type="text" id="alias" placeholder="Custom alias (optional)" />
+  </div>
+
+  <button id="shortenBtn">Shorten</button>
+
+  <!-- RESULT -->
   <div id="result"></div>
 </div>
 

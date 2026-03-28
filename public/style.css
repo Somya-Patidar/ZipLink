@@ -1,39 +1,46 @@
 body {
-  font-family: Arial;
+  font-family: Arial, sans-serif;
   background: linear-gradient(135deg, #667eea, #764ba2);
   height: 100vh;
   display: flex;
   justify-content: center;
   align-items: center;
+  margin: 0;
 }
 
 .container {
   background: white;
   padding: 30px;
-  border-radius: 10px;
+  border-radius: 12px;
   text-align: center;
   width: 350px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
 }
 
-/* 🔥 IMPORTANT FIX */
+h1 {
+  margin-bottom: 20px;
+}
+
 .input-group {
-  display: flex;
-  gap: 10px;
+  margin-bottom: 10px;
 }
 
 input {
-  flex: 1;
+  width: 100%;
   padding: 10px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
 }
 
 button {
-  padding: 10px 15px;
+  width: 100%;
+  padding: 10px;
   background: #667eea;
   color: white;
   border: none;
-  cursor: pointer;   /* 🔥 makes it clickable */
-  position: relative;
-  z-index: 10;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-top: 10px;
 }
 
 button:hover {
@@ -43,4 +50,24 @@ button:hover {
 #result {
   margin-top: 15px;
   word-wrap: break-word;
+}
+
+#result a {
+  color: #667eea;
+  text-decoration: none;
+  font-weight: bold;
+}
+
+.copy-btn {
+  margin-top: 10px;
+  padding: 6px 10px;
+  background: #48bb78;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.copy-btn:hover {
+  background: #38a169;
 }

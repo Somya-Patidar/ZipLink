@@ -3,9 +3,14 @@ const URL = require('../models/urlModel')
 const { client } = require('../config/redisClient')
 const validator = require('validator')
 
-// CREATE SHORT URL
-exports.createShortUrl = async (originalUrl) => {
+// 🔥 Metrics
+let cacheHits = 0
+let cacheMisses = 0
 
+// CREATE SHORT URL
+exports.createShortUrl = async (originalUrl, customAlias, expiresAt) => {
+
+    // ✅ VALIDATION
     if (!validator.isURL(originalUrl, {
         require_protocol: true,
         require_valid_protocol: true
@@ -13,48 +18,109 @@ exports.createShortUrl = async (originalUrl) => {
         throw new Error("Invalid URL")
     }
 
+    // ================================
+    // 🔥 CASE 1: CUSTOM ALIAS PROVIDED
+    // ================================
+    if (customAlias) {
+
+        // check if alias already exists
+        const aliasExists = await URL.findOne({ shortId: customAlias })
+        if (aliasExists) {
+            throw new Error("Alias already taken")
+        }
+
+        // create new mapping (NO deduplication)
+        const url = await URL.create({
+            originalUrl,
+            shortId: customAlias,
+            expiresAt
+        })
+
+        // cache
+        try {
+            if (client?.isOpen) {
+                await client.set(customAlias, JSON.stringify(url), { EX: 3600 })
+            }
+        } catch (err) {}
+
+        return url
+    }
+
+    // ================================
+    // 🔥 CASE 2: NO CUSTOM ALIAS
+    // ================================
+
+    // check if long URL already exists
+    const existing = await URL.findOne({ originalUrl })
+    if (existing) return existing
+
+    // create new short ID
     const shortId = nanoid(6)
 
-    const url = await URL.create({ originalUrl, shortId })
+    const url = await URL.create({
+        originalUrl,
+        shortId,
+        expiresAt
+    })
 
-    // ✅ TRY REDIS (NON-BLOCKING)
+    // cache
     try {
-        if (client && client.isOpen) {
-            await client.set(shortId, originalUrl, { EX: 3600 })
+        if (client?.isOpen) {
+            await client.set(shortId, JSON.stringify(url), { EX: 3600 })
         }
-    } catch (err) {
-        console.log("Redis set failed (ignored):", err.message)
-    }
+    } catch (err) {}
 
     return url
 }
 
+
 // GET ORIGINAL URL
 exports.getOriginalUrl = async (shortId) => {
 
-    // ✅ TRY CACHE FIRST
+    // 🔥 CACHE FIRST
     try {
-        if (client && client.isOpen) {
+        if (client?.isOpen) {
             const cached = await client.get(shortId)
-            if (cached) return { originalUrl: cached }
+            if (cached) {
+                cacheHits++
+                return JSON.parse(cached)
+            }
+            cacheMisses++
         }
-    } catch (err) {
-        console.log("Redis get failed (ignored):", err.message)
-    }
+    } catch (err) {}
 
-    // ✅ FALLBACK TO DB
+    // DB FALLBACK
     const url = await URL.findOne({ shortId })
-
     if (!url) return null
 
-    // ✅ TRY TO CACHE AGAIN (NON-BLOCKING)
-    try {
-        if (client && client.isOpen) {
-            await client.set(shortId, url.originalUrl, { EX: 3600 })
-        }
-    } catch (err) {
-        console.log("Redis cache set failed:", err.message)
+    // expiry check
+    if (url.expiresAt && url.expiresAt < new Date()) {
+        return null
     }
 
+    // increment clicks
+    await URL.updateOne(
+        { shortId },
+        { $inc: { clicks: 1 } }
+    )
+
+    // cache again
+    try {
+        if (client?.isOpen) {
+            await client.set(shortId, JSON.stringify(url), { EX: 3600 })
+        }
+    } catch (err) {}
+
     return url
+}
+
+
+// CACHE METRICS
+exports.getCacheStats = () => {
+    const total = cacheHits + cacheMisses
+    return {
+        hits: cacheHits,
+        misses: cacheMisses,
+        hitRatio: total ? (cacheHits / total).toFixed(2) : 0
+    }
 }

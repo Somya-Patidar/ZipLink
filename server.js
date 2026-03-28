@@ -3,16 +3,21 @@ const express = require('express')
 const path = require('path')
 
 const connectDB = require('./src/config/db')
-require('./src/config/redisClient') // auto connect
+require('./src/config/redisClient')
+
+const rateLimiter = require('./src/middleware/rateLimiter') // 🔥 NEW
 
 const app = express()
 
 app.use(express.json())
 
+// 🔥 Apply rate limit only to shorten API
+app.use('/shorten', rateLimiter)
+
 // serve frontend
 app.use(express.static(path.join(__dirname, 'public')))
 
-// connect DB
+// DB connect
 connectDB()
 
 // routes

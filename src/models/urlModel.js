@@ -7,8 +7,7 @@ const urlSchema = new mongoose.Schema({
     },
     shortId: {
         type: String,
-        required: true,
-        unique: true
+        required: true
     },
     clicks: {
         type: Number,
@@ -22,5 +21,9 @@ const urlSchema = new mongoose.Schema({
         type: Date
     }
 })
+
+// 🔥 NEW (Performance optimization)
+urlSchema.index({ shortId: 1 }, { unique: true })
+urlSchema.index({ originalUrl: 1 })
 
 module.exports = mongoose.model('URL', urlSchema)
