@@ -29,6 +29,7 @@ async function shortenUrl() {
     isLoading = true
     btn.disabled = true
     btn.innerText = "Processing..."
+    console.log("Processing")
 
     const res = await fetch(`${window.location.origin}/shorten`, {
       method: 'POST',
@@ -41,6 +42,7 @@ async function shortenUrl() {
 
     const data = await res.json()
     const resultDiv = document.getElementById("result")
+    console.log("Response:", data)
 
     if (res.ok && data.shortUrl) {
       resultDiv.innerHTML = `
