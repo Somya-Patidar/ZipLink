@@ -8,6 +8,7 @@ require('./src/config/redisClient')
 const rateLimiter = require('./src/middleware/rateLimiter') // 🔥 NEW
 
 const app = express()
+app.set('trust proxy', 1)
 
 app.use(express.json())
 
