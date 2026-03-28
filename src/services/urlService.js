@@ -24,9 +24,20 @@ exports.createShortUrl = async (originalUrl, customAlias, expiresAt) => {
     if (customAlias) {
 
         // check if alias already exists
-        const aliasExists = await URL.findOne({ shortId: customAlias })
-        if (aliasExists) {
-            throw new Error("Alias already taken")
+        try {
+            const url = await URL.create({
+                originalUrl,
+                shortId: customAlias,
+                expiresAt
+            })
+
+            return url
+
+        } catch (err) {
+            if (err.code === 11000) {
+                throw new Error("Alias already taken")
+            }
+            throw err
         }
 
         // create new mapping (NO deduplication)
@@ -41,7 +52,7 @@ exports.createShortUrl = async (originalUrl, customAlias, expiresAt) => {
             if (client?.isOpen) {
                 await client.set(customAlias, JSON.stringify(url), { EX: 3600 })
             }
-        } catch (err) {}
+        } catch (err) { }
 
         return url
     }
@@ -68,7 +79,7 @@ exports.createShortUrl = async (originalUrl, customAlias, expiresAt) => {
         if (client?.isOpen) {
             await client.set(shortId, JSON.stringify(url), { EX: 3600 })
         }
-    } catch (err) {}
+    } catch (err) { }
 
     return url
 }
@@ -87,7 +98,7 @@ exports.getOriginalUrl = async (shortId) => {
             }
             cacheMisses++
         }
-    } catch (err) {}
+    } catch (err) { }
 
     // DB FALLBACK
     const url = await URL.findOne({ shortId })
@@ -109,7 +120,7 @@ exports.getOriginalUrl = async (shortId) => {
         if (client?.isOpen) {
             await client.set(shortId, JSON.stringify(url), { EX: 3600 })
         }
-    } catch (err) {}
+    } catch (err) { }
 
     return url
 }
