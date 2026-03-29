@@ -17,8 +17,12 @@ const urlSchema = new mongoose.Schema({
         type: Date,
         default: Date.now
     },
+    
+    // 🔥 TTL FIELD
     expiresAt: {
-        type: Date
+        type: Date,
+        default: null,
+        index: { expires: 0 } // ✅ auto delete after expiry
     }
 })
 

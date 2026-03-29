@@ -12,7 +12,8 @@ exports.create = async (req, res) => {
 
         // 🔥 FIX: add /r/ prefix
         res.json({
-            shortUrl: `${process.env.BASE_URL}/r/${url.shortId}`
+            shortUrl: `${process.env.BASE_URL}/r/${url.shortId}`,
+            expiryTime: url.expiresAt
         })
     } catch (err) {
         res.status(400).json({ error: err.message })

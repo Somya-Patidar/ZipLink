@@ -6,6 +6,7 @@ const validator = require('validator')
 // 🔥 Metrics
 let cacheHits = 0
 let cacheMisses = 0
+const DEFAULT_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000 // 7 days
 
 // CREATE SHORT URL
 exports.createShortUrl = async (originalUrl, customAlias, expiresAt) => {
@@ -20,6 +21,16 @@ exports.createShortUrl = async (originalUrl, customAlias, expiresAt) => {
 
     const now = new Date()
 
+    // 🔥 FIX: ensure valid expiry
+    let finalExpiry
+    if (!expiresAt || isNaN(new Date(expiresAt))) {
+        finalExpiry = new Date(Date.now() + DEFAULT_EXPIRY_MS)
+    } else {
+        finalExpiry = new Date(expiresAt)
+    }
+
+    console.log("Final expiryTime:", finalExpiry)
+
     // ================================
     // 🔥 CASE 1: CUSTOM ALIAS PROVIDED
     // ================================
@@ -29,31 +40,39 @@ exports.createShortUrl = async (originalUrl, customAlias, expiresAt) => {
             const url = await URL.create({
                 originalUrl,
                 shortId: customAlias,
-                expiresAt: expiresAt || null
+                expiresAt: finalExpiry
             })
 
-            return url
+            return {
+                ...url.toObject(),
+                expiryTime: url.expiresAt
+            }
 
         } catch (err) {
 
             // 🔥 HANDLE DUPLICATE ALIAS
             if (err.code === 11000) {
 
-                // check existing alias
                 const existing = await URL.findOne({ shortId: customAlias })
 
-                // 🔥 if expired → delete and reuse
-                if (existing && existing.expiresAt && existing.expiresAt < now) {
+                // 🔥 CHECK EXPIRY
+                if (existing && existing.expiresAt && existing.expiresAt < new Date()) {
+
+                    console.log("Reusing expired alias:", customAlias)
 
                     await URL.deleteOne({ shortId: customAlias })
 
                     const url = await URL.create({
                         originalUrl,
                         shortId: customAlias,
-                        expiresAt: expiresAt || null
+                        expiresAt: finalExpiry
                     })
 
-                    return url
+                    // 🔥 FIX: return proper format
+                    return {
+                        ...url.toObject(),
+                        expiryTime: url.expiresAt
+                    }
                 }
 
                 throw new Error("Alias already taken")
@@ -73,7 +92,10 @@ exports.createShortUrl = async (originalUrl, customAlias, expiresAt) => {
         .lean()
         .maxTimeMS(2000)
 
-    if (existing) return existing
+    if (existing) return {
+        ...existing,
+        expiryTime: existing.expiresAt
+    }
 
     // create new short ID
     const shortId = nanoid(6)
@@ -81,17 +103,20 @@ exports.createShortUrl = async (originalUrl, customAlias, expiresAt) => {
     const url = await URL.create({
         originalUrl,
         shortId,
-        expiresAt: expiresAt || null
+        expiresAt: finalExpiry
     })
 
     // cache
-    try {
-        if (client?.isOpen) {
-            await client.set(shortId, JSON.stringify(url), { EX: 3600 })
-        }
-    } catch (err) { }
+    // try {
+    //     if (client?.isOpen) {
+    //         await client.set(shortId, JSON.stringify(url), { EX: 3600 })
+    //     }
+    // } catch (err) { }
 
-    return url
+    return {
+        ...url.toObject(),
+        expiryTime: url.expiresAt
+    }
 }
 
 
@@ -122,6 +147,11 @@ exports.getOriginalUrl = async (shortId) => {
     if (!url) return null
 
     if (url.expiresAt && url.expiresAt < new Date()) {
+
+        console.log("Deleting expired link:", shortId)
+
+        await URL.deleteOne({ shortId })
+
         return null
     }
 
