@@ -10,8 +10,9 @@ exports.create = async (req, res) => {
             expiresAt
         )
 
+        // 🔥 FIX: add /r/ prefix
         res.json({
-            shortUrl: `${process.env.BASE_URL}/${url.shortId}`
+            shortUrl: `${process.env.BASE_URL}/r/${url.shortId}`
         })
     } catch (err) {
         res.status(400).json({ error: err.message })
@@ -20,7 +21,7 @@ exports.create = async (req, res) => {
 
 exports.redirect = async (req, res) => {
 
-    console.time("redirect") // 🔥 NEW metric
+    console.time("redirect")
 
     const url = await service.getOriginalUrl(req.params.shortId)
 
@@ -28,5 +29,12 @@ exports.redirect = async (req, res) => {
 
     if (!url) return res.status(404).send("Not found")
 
-    res.redirect(url.originalUrl)
+    let redirectUrl = url.originalUrl
+
+    // ensure protocol
+    if (!redirectUrl.startsWith("http://") && !redirectUrl.startsWith("https://")) {
+        redirectUrl = "https://" + redirectUrl
+    }
+
+    res.redirect(redirectUrl)
 }

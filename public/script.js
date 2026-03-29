@@ -3,11 +3,11 @@ console.log("JS loaded")
 const btn = document.getElementById("shortenBtn")
 btn.addEventListener("click", shortenUrl)
 
-let isLoading = false  // 🔥 prevents multiple clicks
+let isLoading = false
 
 async function shortenUrl() {
 
-  if (isLoading) return   // 🔥 ignore duplicate clicks
+  if (isLoading) return
 
   console.log("Button clicked")
 
@@ -19,17 +19,16 @@ async function shortenUrl() {
     return
   }
 
-  // ✅ Fix URL if protocol missing
+  // ✅ Ensure protocol
   if (!input.startsWith("http")) {
     input = "https://" + input
   }
 
   try {
-    // 🔥 disable button + mark loading
     isLoading = true
     btn.disabled = true
     btn.innerText = "Processing..."
-    console.log("Processing")
+    console.log("Sending request...")
 
     const res = await fetch(`${window.location.origin}/shorten`, {
       method: 'POST',
@@ -40,9 +39,17 @@ async function shortenUrl() {
       })
     })
 
-    const data = await res.json()
+    // 🔥 SAFE JSON PARSE (IMPORTANT)
+    let data = {}
+    try {
+      data = await res.json()
+    } catch (e) {
+      console.log("Response is not JSON")
+    }
+
+    console.log("Response:", res.status, data)
+
     const resultDiv = document.getElementById("result")
-    console.log("Response:", data)
 
     if (res.ok && data.shortUrl) {
       resultDiv.innerHTML = `
@@ -52,15 +59,18 @@ async function shortenUrl() {
         <button onclick="copyToClipboard('${data.shortUrl}')">Copy</button>
       `
     } else {
+      // 🔥 SHOW ACTUAL ERROR
+      const errorMsg = data.error || `Error: ${res.status}`
       resultDiv.innerHTML =
-        `<p style="color:red;">${data.error || "Something went wrong"}</p>`
+        `<p style="color:red;">${errorMsg}</p>`
+
+      alert(errorMsg) // 👈 now shows real issue
     }
 
   } catch (err) {
-    console.error(err)
-    alert("Server error")
+    console.error("FETCH ERROR:", err)
+    alert("Server not reachable")
   } finally {
-    // 🔥 re-enable button always
     isLoading = false
     btn.disabled = false
     btn.innerText = "Shorten"
@@ -68,7 +78,7 @@ async function shortenUrl() {
 }
 
 
-// 🔥 Copy feature
+// Copy feature
 function copyToClipboard(text) {
   navigator.clipboard.writeText(text)
   alert("Copied to clipboard!")

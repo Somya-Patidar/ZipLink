@@ -98,39 +98,43 @@ exports.createShortUrl = async (originalUrl, customAlias, expiresAt) => {
 // GET ORIGINAL URL
 exports.getOriginalUrl = async (shortId) => {
 
-    // 🔥 CACHE FIRST
+    console.log("STEP 1: checking cache")
+
     try {
         if (client?.isOpen) {
             const cached = await client.get(shortId)
             if (cached) {
-                cacheHits++
+                console.log("CACHE HIT")
                 return JSON.parse(cached)
             }
-            cacheMisses++
+            console.log("CACHE MISS")
         }
-    } catch (err) { }
+    } catch (err) {
+        console.log("REDIS ERROR:", err)
+    }
 
-    // DB FALLBACK
-    const url = await URL.findOne({ shortId })
+    console.log("STEP 2: querying DB")
+
+    const url = await URL.findOne({ shortId }).maxTimeMS(2000)
+
+    console.log("STEP 3: DB result:", url)
+
     if (!url) return null
 
-    // expiry check
     if (url.expiresAt && url.expiresAt < new Date()) {
         return null
     }
 
-    // increment clicks
     await URL.updateOne(
         { shortId },
         { $inc: { clicks: 1 } }
     )
 
-    // cache again
     try {
         if (client?.isOpen) {
             await client.set(shortId, JSON.stringify(url), { EX: 3600 })
         }
-    } catch (err) { }
+    } catch (err) {}
 
     return url
 }
