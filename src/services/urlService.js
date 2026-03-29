@@ -100,18 +100,18 @@ exports.getOriginalUrl = async (shortId) => {
 
     console.log("STEP 1: checking cache")
 
-    try {
-        if (client?.isOpen) {
-            const cached = await client.get(shortId)
-            if (cached) {
-                console.log("CACHE HIT")
-                return JSON.parse(cached)
-            }
-            console.log("CACHE MISS")
-        }
-    } catch (err) {
-        console.log("REDIS ERROR:", err)
-    }
+    // try {
+    //     if (client?.isOpen) {
+    //         const cached = await client.get(shortId)
+    //         if (cached) {
+    //             console.log("CACHE HIT")
+    //             return JSON.parse(cached)
+    //         }
+    //         console.log("CACHE MISS")
+    //     }
+    // } catch (err) {
+    //     console.log("REDIS ERROR:", err)
+    // }
 
     console.log("STEP 2: querying DB")
 
@@ -130,11 +130,11 @@ exports.getOriginalUrl = async (shortId) => {
         { $inc: { clicks: 1 } }
     )
 
-    try {
-        if (client?.isOpen) {
-            await client.set(shortId, JSON.stringify(url), { EX: 3600 })
-        }
-    } catch (err) {}
+    // try {
+    //     if (client?.isOpen) {
+    //         await client.set(shortId, JSON.stringify(url), { EX: 3600 })
+    //     }
+    // } catch (err) {}
 
     return url
 }
